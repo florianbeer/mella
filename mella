@@ -1,0 +1,157 @@
+#!/usr/bin/env bash
+
+# Mella - ownCloud upload via WebDAV using curl
+# Copyright (c) 2016 by Florian Beer <fb@42dev.eu>
+
+declare -r VERSION="1.0"
+declare VERBOSE="--silent"
+
+usage() {
+cat <<EOM
+
+Mella - ownCloud upload via WebDAV using curl
+Copyright (c)2016 by Florian Beer <fb@42dev.eu>
+Version ${VERSION}
+
+This script comes with ABSOLUTELY NO WARRANTY.
+This is free software, and you are welcome to redistribute it
+under certain conditions. See CC BY-NC-SA 4.0 for details.
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+Usage
+ $(basename ${0}) [OPTIONS] SOURCE TARGET
+
+Options
+ -c FILE  optional path to credentials file (default is ~/.mella.conf)
+ -v       increase verbosity
+ -h       show this message
+ -V       show version number
+
+Example
+ mella -c myconfig.conf backup.tar.gz http://demo.owncloud.org/remote.php/webdav/
+
+Credentials file syntax
+ username:password
+
+EOM
+}
+
+parse_commandline_arguments() {
+	while [[ ${1:0:1} = "-" ]] ; do
+		local n=1
+		local l=${#1}
+		while [[ $n -lt $l ]] ; do
+			case ${1:$n:1} in
+        h)
+          usage
+          exit 0
+          ;;
+				c)
+					if [[ $n -ne $(($l-1)) || ! -n ${2} ]]; then
+						usage
+						exit 1
+					fi
+					if [[ -f ${2} ]]; then
+						CREDENTIALSFILE="${2}"
+						shift
+					else
+						printf "Error: Credentials file '%s' not found\n" "${2}" >&2
+						exit 3
+					fi
+					;;
+				v)
+					VERBOSE="--verbose"
+					;;
+				V)
+					printf "Mella Version %s\n" "${VERSION}"
+					exit 0
+					;;
+				*)
+					printf "Error: Unknown option %s\n" "${1}" >&2
+					exit 4
+					;;
+			esac
+			n=$(($n+1))
+		done
+		shift
+	done
+
+	# No arguments where given
+	if [[ ! -n ${1} ]]; then
+		usage
+		exit 0
+	fi
+
+  # Target is missing
+  if [[ ! -n ${2} ]]; then
+    printf "Error: Please specify target \n" >&2
+    exit 5
+  fi
+
+  SOURCE="${1}"
+  TARGET="${2}"
+}
+
+main() {
+	parse_commandline_arguments "$@"
+
+  # Check if curl is installed
+  if ! hash "curl" &> /dev/null; then
+    printf "Error: Mella requires curl but it's not installed.\n" >&2
+    exit 1
+  fi
+
+	# Do we use a default configuration file?
+	if [[ -f "$HOME/.mella.conf" && $CREDENTIALSFILE = "" ]]; then
+		CREDENTIALSFILE="$HOME/.mella.conf"
+	fi
+
+  # Credentials file not found
+  if [[ ! $CREDENTIALSFILE ]]; then
+    printf "Error: No credentials file found.\n" >&2
+    printf " Either create '~/.mella.conf' or specify custom path with '-c FILE'\n" >&2
+    exit 1
+  fi
+
+  # Credentials file must onyl be readable by current user
+  if [[ $(stat -c '%a' ${CREDENTIALSFILE}) != 600 ]]; then
+    printf "Error: Credentials file is not secure. Please set 'chmod 600 %s'.\n" "${CREDENTIALSFILE}" >&2
+    exit 1
+  fi
+
+  credentials=$(< ${CREDENTIALSFILE})
+
+  logger -t mella "Uploading \"$(basename ${SOURCE})\" to \"${TARGET}\""
+
+  error=""
+	# Upload with curl
+  response=$(curl ${VERBOSE} --write-out %{http_code} --output /dev/null -L --user "${credentials}" --request PUT "${TARGET}/$(basename ${SOURCE})" --data-binary @"${SOURCE}")
+  exit_code=$?
+
+  if [[ ${exit_code} -gt 0 ]]; then
+    if [[ ${VERBOSE} != "--verbose" ]]; then
+      response=${response//000}
+      error="curl error: Use '-v' to see error message."
+    else
+      response=${response//000}
+      error=${response}
+    fi
+  fi
+
+  if [[ ${exit_code} -eq 0 && ${response} != 000 && ${response} != 200 && ${response} != 201 && ${response} != 204 ]]; then
+    error="Error uploading \"${SOURCE}\". HTTP error ${response}."
+    exit_code=1
+  fi
+
+  if [[ ${exit_code} -gt 0 ]]; then
+    logger -t mella "curl error ${response}"
+    echo "${error}" >&2
+    exit ${exit_code}
+  else
+    logger -t mella "Upload finished. HTTP response ${response}"
+    exit 0
+  fi
+
+}
+
+main "$@"
