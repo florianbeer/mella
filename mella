@@ -19,68 +19,68 @@ under certain conditions. See CC BY-NC-SA 4.0 for details.
 https://creativecommons.org/licenses/by-nc-sa/4.0/
 
 Usage
- $(basename ${0}) [OPTIONS] SOURCE TARGET
+  $(basename ${0}) [OPTIONS] SOURCE TARGET
 
 Options
- -c FILE  optional path to credentials file (default is ~/.mella.conf)
- -v       increase verbosity
- -h       show this message
- -V       show version number
+  -c FILE  optional path to credentials file (default is ~/.mella.conf)
+  -v       increase verbosity
+  -h       show this message
+  -V       show version number
 
 Example
- mella -c myconfig.conf backup.tar.gz http://demo.owncloud.org/remote.php/webdav/
+  mella -c myconfig.conf backup.tar.gz http://demo.owncloud.org/remote.php/webdav/
 
 Credentials file syntax
- username:password
+  username:password
 
 EOM
 }
 
 parse_commandline_arguments() {
-	while [[ ${1:0:1} = "-" ]] ; do
-		local n=1
-		local l=${#1}
-		while [[ $n -lt $l ]] ; do
-			case ${1:$n:1} in
+  while [[ ${1:0:1} = "-" ]] ; do
+    local n=1
+    local l=${#1}
+    while [[ $n -lt $l ]] ; do
+      case ${1:$n:1} in
         h)
           usage
           exit 0
           ;;
-				c)
-					if [[ $n -ne $(($l-1)) || ! -n ${2} ]]; then
-						usage
-						exit 1
-					fi
-					if [[ -f ${2} ]]; then
-						CREDENTIALSFILE="${2}"
-						shift
-					else
-						printf "Error: Credentials file '%s' not found\n" "${2}" >&2
-						exit 3
-					fi
-					;;
-				v)
-					VERBOSE="--verbose"
-					;;
-				V)
-					printf "Mella Version %s\n" "${VERSION}"
-					exit 0
-					;;
-				*)
-					printf "Error: Unknown option %s\n" "${1}" >&2
-					exit 4
-					;;
-			esac
-			n=$(($n+1))
-		done
-		shift
-	done
+        c)
+          if [[ $n -ne $(($l-1)) || ! -n ${2} ]]; then
+            usage
+            exit 1
+          fi
+          if [[ -f ${2} ]]; then
+            CREDENTIALSFILE="${2}"
+            shift
+          else
+            printf "Error: Credentials file '%s' not found\n" "${2}" >&2
+            exit 3
+          fi
+          ;;
+        v)
+          VERBOSE="--verbose"
+          ;;
+        V)
+          printf "Mella Version %s\n" "${VERSION}"
+          exit 0
+          ;;
+        *)
+          printf "Error: Unknown option %s\n" "${1}" >&2
+          exit 4
+          ;;
+      esac
+      n=$(($n+1))
+    done
+    shift
+  done
 
-	# No arguments where given
-	if [[ ! -n ${1} ]]; then
-		usage
-		exit 0
-	fi
+  # No arguments where given
+  if [[ ! -n ${1} ]]; then
+    usage
+    exit 0
+  fi
 
   # Target is missing
   if [[ ! -n ${2} ]]; then
@@ -93,7 +93,7 @@ parse_commandline_arguments() {
 }
 
 main() {
-	parse_commandline_arguments "$@"
+  parse_commandline_arguments "$@"
 
   # Check if curl is installed
   if ! hash "curl" &> /dev/null; then
@@ -101,10 +101,10 @@ main() {
     exit 1
   fi
 
-	# Do we use a default configuration file?
-	if [[ -f "$HOME/.mella.conf" && $CREDENTIALSFILE = "" ]]; then
-		CREDENTIALSFILE="$HOME/.mella.conf"
-	fi
+  # Do we use a default configuration file?
+  if [[ -f "$HOME/.mella.conf" && $CREDENTIALSFILE = "" ]]; then
+    CREDENTIALSFILE="$HOME/.mella.conf"
+  fi
 
   # Credentials file not found
   if [[ ! $CREDENTIALSFILE ]]; then
@@ -124,7 +124,7 @@ main() {
   logger -t mella "Uploading \"$(basename ${SOURCE})\" to \"${TARGET}\""
 
   error=""
-	# Upload with curl
+  # Upload with curl
   response=$(curl ${VERBOSE} --write-out %{http_code} --output /dev/null -L --user "${credentials}" --request PUT "${TARGET}/$(basename ${SOURCE})" --data-binary @"${SOURCE}")
   exit_code=$?
 
