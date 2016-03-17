@@ -3,7 +3,7 @@ ownCloud upload via WebDAV using curl
 
 Copyright (c)2016 by [Florian Beer](https://github.com/florianbeer)
 
-Version 1.00
+Version 1.01
 
 This script comes with ABSOLUTELY NO WARRANTY.  
 This is free software, and you are welcome to redistribute it  
