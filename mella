@@ -3,8 +3,9 @@
 # Mella - ownCloud upload via WebDAV using curl
 # Copyright (c) 2016 by Florian Beer <fb@42dev.eu>
 
-declare -r VERSION="1.0"
+declare -r VERSION="1.1"
 declare VERBOSE="--silent"
+declare INSECURESSL=""
 
 usage() {
 cat <<EOM
@@ -24,6 +25,7 @@ Usage
 Options
   -c FILE  optional path to credentials file (default is ~/.mella.conf)
   -v       increase verbosity
+  -k       allow curl to make "insecure" SSL connections and transfers
   -h       show this message
   -V       show version number
 
@@ -61,6 +63,9 @@ parse_commandline_arguments() {
           ;;
         v)
           VERBOSE="--verbose"
+          ;;
+        k)
+          INSECURESSL="--insecure"
           ;;
         V)
           printf "Mella Version %s\n" "${VERSION}"
@@ -113,11 +118,11 @@ main() {
     exit 1
   fi
 
-  # Credentials file must onyl be readable by current user
-  if [[ $(stat -c '%a' ${CREDENTIALSFILE}) != 600 ]]; then
-    printf "Error: Credentials file is not secure. Please set 'chmod 600 %s'.\n" "${CREDENTIALSFILE}" >&2
-    exit 1
-  fi
+  # # Credentials file must onyl be readable by current user
+  # if [[ $(stat -c '%a' ${CREDENTIALSFILE}) != 600 ]]; then
+  #   printf "Error: Credentials file is not secure. Please set 'chmod 600 %s'.\n" "${CREDENTIALSFILE}" >&2
+  #   exit 1
+  # fi
 
   credentials=$(< ${CREDENTIALSFILE})
 
@@ -125,7 +130,7 @@ main() {
 
   error=""
   # Upload with curl
-  response=$(curl ${VERBOSE} --write-out %{http_code} --output /dev/null -L --user "${credentials}" --request PUT "${TARGET}/$(basename ${SOURCE})" --data-binary @"${SOURCE}")
+  response=$(curl ${VERBOSE} ${INSECURESSL} --location --write-out %{http_code} --output /dev/null --user "${credentials}" --request PUT "${TARGET}/$(basename ${SOURCE})" --data-binary @"${SOURCE}")
   exit_code=$?
 
   if [[ ${exit_code} -gt 0 ]]; then

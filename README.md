@@ -22,6 +22,7 @@ Target is you ownCloud WebDAV URL. You can find it by clicking on "Settings" in 
 ```
  -c FILE  optional path to credentials file (default is ~/.mella.conf)
  -v       increase verbosity
+ -k       allow curl to make "insecure" SSL connections and transfers
  -h       show this message
  -V       show version number
 ```
